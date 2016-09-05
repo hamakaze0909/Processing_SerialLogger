@@ -2,9 +2,6 @@ import controlP5.*;
 
 import processing.serial.*;
 
-final int BAUD = 9600;
-final String PORT = "COM5";
-
 Serial mySerial;
 
 String serialStr = "";
@@ -16,10 +13,26 @@ int logAreaColor = color(250);
 int ddlColor = color(150);
 
 Textarea serialLogTextarea;
-DropdownList portList;
+DropdownList portList,baudList;
 
 String selectedPort;
 boolean isConnect;
+
+String[] baudRate = {
+  "300",
+  "1200",
+  "2400",
+  "4800",
+  "9600",
+  "14400",
+  "19200",
+  "28800",
+  "38400",
+  "57600",
+  "115200"
+};
+
+int selectedBaud;
 
 void setup(){
   size(640,480);
@@ -33,6 +46,7 @@ void setup(){
   //output = createWriter("SerialLog_"+nf(year(),2)+nf(month(),2)+nf(hour(),2)+nf(minute(),2)+nf(second(),2)+".log");
 
   selectedPort = null;
+  selectedBaud = -1;
   isConnect = false;
   textPrintln("\"Select Serial Port\"");
 }
@@ -70,21 +84,33 @@ void serialLoop(){
 }
 
 void cp5Init(){
-  cp5.addButton("connect").setValue(1).setPosition(130,20).setSize(100,50);
-  cp5.addButton("disconnect").setValue(0).setPosition(240,20).setSize(100,50);
+  cp5.addButton("connect").setValue(1)
+                          .setFont(createFont("arial",16))
+                          .setPosition(130,20)
+                          .setSize(100,50);
+  cp5.addButton("disconnect").setValue(0)
+                             .setFont(createFont("arial",15))
+                             .setPosition(240,20)
+                             .setSize(100,50);
   serialLogTextarea = cp5.addTextarea("serialLog")
                          .setPosition(20,80)
                          .setSize(600,385)
-                         .setFont(createFont("arial",16))
+                         .setFont(createFont("arial",15))
                          .setLineHeight(18)
                          .setColor(color(0))
                          .setColorBackground(logAreaColor)
                          .setColorForeground(logAreaColor);
   serialLogTextarea.scroll(1);
   portList = cp5.addDropdownList("portList")
+                .setFont(createFont("arial",12))
                 .setPosition(20,32)
                 .setSize(100,100);
   portListInit(portList);
+  baudList = cp5.addDropdownList("baudList")
+                .setFont(createFont("arial",12))
+                .setPosition(500,32)
+                .setSize(100,100);
+  baudListInit(baudList);
 }
 
 public void controlEvent(ControlEvent theEvent) {
@@ -93,10 +119,13 @@ public void controlEvent(ControlEvent theEvent) {
   if(theEvent.getController().getName() == ("portList")){
     setPort(theEvent.getController().getValue());
   }
+  if(theEvent.getController().getName() == ("baudList")){
+    setBaud(theEvent.getController().getValue());
+  }
 }
 
 public void connect(int theValue){
-  serialConnect(9600,selectedPort);
+  serialConnect(selectedBaud,selectedPort);
 }
 
 public void disconnect(int theValue){
@@ -104,7 +133,7 @@ public void disconnect(int theValue){
 }
 
 void serialConnect(int baud,String port){
-  if(!isConnect && port != null){
+  if(!isConnect && port != null && baud != -1){
     mySerial = new Serial(this,port,baud);
     mySerial.clear();
     isConnect = true;
@@ -112,8 +141,12 @@ void serialConnect(int baud,String port){
     output = createWriter("SerialLog_"+nf(year(),2)+nf(month(),2)+nf(hour(),2)+nf(minute(),2)+nf(second(),2)+".log");
     
     textPrintln("\"Start connection: Port "+port+"\"");
-  }else if(port == null){
-    textPrintln("\"Connection error: select port!\"");
+  }
+  if(port == null){
+    textPrintln("\"Connection error: Select Port!\"");
+  }
+  if(baud == -1){
+    textPrintln("\"Connection error: Select Baud Rate!\"");
   }
 }
 
@@ -142,10 +175,22 @@ void portListInit(DropdownList ddl){
   ddl.setColorActive(color(0));
 }
 
+void baudListInit(DropdownList ddl){
+  ddl.setItemHeight(20);
+  ddl.setBarHeight(25);
+  ddl.getCaptionLabel().set("Baud Rate");
+  ddl.addItems(baudRate);
+  ddl.setColorBackground(ddlColor);
+  ddl.setColorActive(color(0));
+}
+
 void setPort(float index){
   selectedPort = portList.getItem(int(index)).get("name").toString();
   textPrintln("\"Set Serial Port → " +selectedPort  +" \"");
-  
+}
+void setBaud(float index){
+  selectedBaud = int(baudList.getItem(int(index)).get("name").toString());
+  textPrintln("\"Set Baud Rate → " +selectedBaud +"\"");
 }
 
 void textPrint(String str){
