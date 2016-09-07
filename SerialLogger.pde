@@ -74,9 +74,15 @@ void serialLoop(){
       if(serialStr.length() < 40){;
         //print(updateDateTime()+",");
         //println(serialStr);
-        textPrintln(updateDateTime()+","+serialStr);
-      
-        output.println(updateDateTime()+","+serialStr);
+        if(serialStr.contains("\n")){
+          textPrint(updateDateTime()+","+serialStr);
+          output.print(updateDateTime()+","+serialStr);
+        }else{
+          textPrintln(updateDateTime()+","+serialStr);
+          output.println(updateDateTime()+","+serialStr);
+        }
+        //textPrintln(updateDateTime()+","+serialStr);
+        //output.println(updateDateTime()+","+serialStr);
         output.flush();
       }
     }
@@ -138,7 +144,7 @@ void serialConnect(int baud,String port){
     mySerial.clear();
     isConnect = true;
     
-    output = createWriter("SerialLog_"+nf(year(),2)+nf(month(),2)+nf(hour(),2)+nf(minute(),2)+nf(second(),2)+".log");
+    output = createWriter("SerialLog_"+nf(year(),2)+nf(month(),2)+nf(day(),2)+"_"+nf(hour(),2)+nf(minute(),2)+nf(second(),2)+".log");
     
     textPrintln("\"Start connection: Port "+port+"\"");
   }
@@ -168,6 +174,8 @@ void portListInit(DropdownList ddl){
   ddl.setItemHeight(20);
   ddl.setBarHeight(25);
   ddl.getCaptionLabel().set("Serial Port");
+  
+  //todo: addの方法を「addItems」に変更
   for(int i = 0; i < Serial.list().length;i++){
     ddl.addItem(Serial.list()[i],i);
   }
