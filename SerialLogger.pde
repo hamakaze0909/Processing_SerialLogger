@@ -13,10 +13,15 @@ int logAreaColor = color(250);
 int ddlColor = color(150);
 
 Textarea serialLogTextarea;
-DropdownList portList,baudList;
+DropdownList portList,baudList,modeList;
+
 
 String selectedPort;
 boolean isConnect;
+
+
+final float SENSITIVITY = 0.5;
+final int BUFF_SIZE = 40;
 
 String[] baudRate = {
   "300",
@@ -26,13 +31,21 @@ String[] baudRate = {
   "9600",
   "14400",
   "19200",
-  "28800",
+  "28800", //<>// //<>//
   "38400",
   "57600",
   "115200"
 };
+String[] modeNames = {
+  "Not Logging",
+  "Normal Log",
+  "Time Stamp Log"
+  
+};
 
 int selectedBaud;
+int selectedMode; //0=記録なし 1＝データ記録 2＝タイムスタンプ付き記録
+int nowMode;
 
 void setup(){
   size(640,480);
@@ -48,6 +61,8 @@ void setup(){
   selectedPort = null;
   selectedBaud = -1;
   isConnect = false;
+  nowMode = -1;
+  selectedMode = -1;
   textPrintln("\"Select Serial Port\"");
 }
 
@@ -71,19 +86,37 @@ void serialLoop(){
     if( mySerial.available() > 0){
       delay(100);
       serialStr = mySerial.readString();//文字列更新
-      if(serialStr.length() < 40){;
+      if(serialStr.length() < BUFF_SIZE && serialStr != null){;
         //print(updateDateTime()+",");
         //println(serialStr);
         if(serialStr.contains("\n")){
-          textPrint(updateDateTime()+","+serialStr);
-          output.print(updateDateTime()+","+serialStr);
+          if(nowMode == 0){
+            textPrint(serialStr);
+          }
+          if(nowMode == 1){
+            textPrint(serialStr);
+            output.print(serialStr);
+          }
+          if(nowMode == 2){
+            textPrint(updateDateTime()+","+serialStr);
+            output.print(updateDateTime()+","+serialStr);
+          }
         }else{
-          textPrintln(updateDateTime()+","+serialStr);
-          output.println(updateDateTime()+","+serialStr);
+          if(nowMode == 0){
+            textPrintln(serialStr);
+          }
+          if(nowMode == 1){
+            textPrintln(serialStr);
+            output.println(serialStr);
+          }
+          if(nowMode == 2){
+            textPrintln(updateDateTime()+","+serialStr);
+            output.println(updateDateTime()+","+serialStr);
+          }
         }
         //textPrintln(updateDateTime()+","+serialStr);
         //output.println(updateDateTime()+","+serialStr);
-        output.flush();
+        if(nowMode != 0)output.flush();
       }
     }
   }
@@ -92,11 +125,11 @@ void serialLoop(){
 void cp5Init(){
   cp5.addButton("connect").setValue(1)
                           .setFont(createFont("arial",16))
-                          .setPosition(130,20)
+                          .setPosition(280,20)
                           .setSize(100,50);
   cp5.addButton("disconnect").setValue(0)
                              .setFont(createFont("arial",15))
-                             .setPosition(240,20)
+                             .setPosition(390,20)
                              .setSize(100,50);
   serialLogTextarea = cp5.addTextarea("serialLog")
                          .setPosition(20,80)
@@ -114,13 +147,20 @@ void cp5Init(){
   portListInit(portList);
   baudList = cp5.addDropdownList("baudList")
                 .setFont(createFont("arial",12))
-                .setPosition(500,32)
+                .setPosition(130,32)
                 .setSize(100,100);
   baudListInit(baudList);
+  modeList = cp5.addDropdownList("modeList")
+                .setFont(createFont("arial",12))
+                .setPosition(500,32)
+                .setSize(120,100);
+  modeListInit(modeList);
+  
+  
 }
 
 public void controlEvent(ControlEvent theEvent) {
-  println(theEvent.getController().getName());
+  //println(theEvent.getController().getName());
   
   if(theEvent.getController().getName() == ("portList")){
     setPort(theEvent.getController().getValue());
@@ -128,31 +168,39 @@ public void controlEvent(ControlEvent theEvent) {
   if(theEvent.getController().getName() == ("baudList")){
     setBaud(theEvent.getController().getValue());
   }
+  if(theEvent.getController().getName() == ("modeList")){
+    setMode(theEvent.getController().getValue());
+  }
 }
 
 public void connect(int theValue){
-  serialConnect(selectedBaud,selectedPort);
+  serialConnect(selectedBaud,selectedPort,selectedMode);
+  nowMode = selectedMode;
 }
 
 public void disconnect(int theValue){
   serialDisconnect();
 }
 
-void serialConnect(int baud,String port){
-  if(!isConnect && port != null && baud != -1){
+void serialConnect(int baud,String port,int mode){
+  if(!isConnect && port != null && baud != -1 && mode != -1){
     mySerial = new Serial(this,port,baud);
     mySerial.clear();
     isConnect = true;
     
-    output = createWriter("SerialLog_"+nf(year(),2)+nf(month(),2)+nf(day(),2)+"_"+nf(hour(),2)+nf(minute(),2)+nf(second(),2)+".log");
+    if(mode != 0)output = createWriter("SerialLog_"+nf(year(),2)+nf(month(),2)+nf(day(),2)+"_"+nf(hour(),2)+nf(minute(),2)+nf(second(),2)+".log");
     
-    textPrintln("\"Start connection: Port "+port+"\"");
+    textPrintln("\"Start connection: Port " +port  +" + : Mode "  +modeNames[mode] +"\"");
   }
+
   if(port == null){
-    textPrintln("\"Connection error: Select Port!\"");
+    textPrintln("\"Connection error!: Select Port\"");
   }
   if(baud == -1){
-    textPrintln("\"Connection error: Select Baud Rate!\"");
+    textPrintln("\"Connection error!: Select Baud Rate\"");
+  }
+  if(mode == -1){
+    textPrintln("\"Connection error!: Select Mode\"");
   }
 }
 
@@ -166,30 +214,44 @@ void serialDisconnect(){
     mySerial = null;
     isConnect = false;
     textPrintln("\"Serial Close\"");
-    
   }
 }
 
 void portListInit(DropdownList ddl){
   ddl.setItemHeight(20);
-  ddl.setBarHeight(25);
+  ddl.setBarHeight(30);
   ddl.getCaptionLabel().set("Serial Port");
   
   //todo: addの方法を「addItems」に変更
   for(int i = 0; i < Serial.list().length;i++){
     ddl.addItem(Serial.list()[i],i);
   }
+
   ddl.setColorBackground(ddlColor);
   ddl.setColorActive(color(0));
+  ddl.setOpen(false);
+  ddl.setScrollSensitivity(SENSITIVITY);
 }
 
 void baudListInit(DropdownList ddl){
   ddl.setItemHeight(20);
-  ddl.setBarHeight(25);
+  ddl.setBarHeight(30);
   ddl.getCaptionLabel().set("Baud Rate");
   ddl.addItems(baudRate);
   ddl.setColorBackground(ddlColor);
   ddl.setColorActive(color(0));
+  ddl.setOpen(false);
+  ddl.setScrollSensitivity(SENSITIVITY);
+}
+void modeListInit(DropdownList ddl){
+  ddl.setItemHeight(20);
+  ddl.setBarHeight(30);
+  ddl.getCaptionLabel().set("mode Setting");
+  ddl.addItems(modeNames);
+  ddl.setColorBackground(ddlColor);
+  ddl.setColorActive(color(0));
+  ddl.setOpen(false);
+  ddl.setScrollSensitivity(SENSITIVITY);
 }
 
 void setPort(float index){
@@ -209,4 +271,17 @@ void textPrint(String str){
 void textPrintln(String str){
   serialLogTextarea.append(str+"\n");
   print(str+"\n");
+}
+
+void setMode(float index){
+  selectedMode = int(index);
+  if(selectedMode == 0){
+    textPrintln("\"Set Mode → " +"Not Logging" +"\"");
+  }else if(selectedMode == 1){
+    textPrintln("\"Set Mode → " +"Normal Logging" +"\"");
+  }else if(selectedMode == 2){
+    textPrintln("\"Set Mode → " +"Timestamp Logging" +"\"");
+  }else {
+    textPrintln("\"Mode error!: Mode error\"");
+  }
 }
