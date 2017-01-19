@@ -20,8 +20,8 @@ String selectedPort;
 boolean isConnect;
 
 
-final float SENSITIVITY = 0.5;
-final int BUFF_SIZE = 40;
+final float SENSITIVITY = 0.5; //DropDownListのSensitivity値
+final int BUFF_SIZE = 256; //文字列制限
 
 String[] baudRate = {
   "300",
@@ -85,7 +85,7 @@ void serialLoop(){
   if(isConnect ){
     if( mySerial.available() > 0){
       delay(100);
-      serialStr = mySerial.readString();//文字列更新
+      serialStr = mySerial.readString();//文字列更新 (※一定数(BUFF_SIZE)以下の文字列の場合のみ)
       if(serialStr.length() < BUFF_SIZE && serialStr != null){;
         //print(updateDateTime()+",");
         //println(serialStr);
@@ -188,7 +188,7 @@ void serialConnect(int baud,String port,int mode){
     mySerial.clear();
     isConnect = true;
     
-    if(mode != 0)output = createWriter("SerialLog_"+nf(year(),2)+nf(month(),2)+nf(day(),2)+"_"+nf(hour(),2)+nf(minute(),2)+nf(second(),2)+".log");
+    if(mode != 0)output = createWriter("SerialLog_"+nf(year(),2)+nf(month(),2)+nf(day(),2)+"_"+nf(hour(),2)+nf(minute(),2)+nf(second(),2)+".csv");
     
     textPrintln("\"Start connection: Port " +port  +" + : Mode "  +modeNames[mode] +"\"");
   }
